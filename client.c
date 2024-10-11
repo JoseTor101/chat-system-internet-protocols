@@ -12,58 +12,86 @@
 #define PORT 8080
 #define SA struct sockaddr
 
+void printMenu()
+{
+    printf("===============================================\n");
+    printf("        Welcome to the Chat Server!            \n");
+    printf("===============================================\n");
+    printf("Use the following commands to interact:\n\n");
+
+    printf("LIST USERS           - List all available users.\n");
+    printf("CONNECT <user_id>    - Connect to a user for chat.\n");
+    printf("SEND <message>       - Send a message to the current chat.\n");
+    printf("DISCONNECT           - Disconnect from the chat.\n");
+    printf("STATUS               - Show current chat status.\n");
+    printf("HELP                 - Display help information.\n");
+
+    printf("===============================================\n");
+};
+
 // Function to receive messages from the server
-void receiveMessages(int sockfd) {
+void receiveMessages(int sockfd)
+{
     char buff[MAX];
-    while (1) {
+    while (1)
+    {
         bzero(buff, sizeof(buff));
         // Read message from server (relayed from another client)
-        if (read(sockfd, buff, sizeof(buff)) > 0) {
+        if (read(sockfd, buff, sizeof(buff)) > 0)
+        {
             // Print received messages in blue
             printf(BLUE "--> %s" RESET, buff);
             printf(WHITE); // Reset color to white for the next input
         }
     }
-}
+};
 
 // Function to send messages to the server
-void sendMessages(int sockfd) {
+void sendMessages(int sockfd)
+{
     char buff[MAX];
     int n;
-    while (1) {
+    while (1)
+    {
         bzero(buff, sizeof(buff));
         n = 0;
- 
-        printf(WHITE); 
+
+        printf(WHITE);
         while ((buff[n++] = getchar()) != '\n')
             ;
 
         write(sockfd, buff, sizeof(buff));
 
-        if (n > 1) {
+        if (n > 1)
+        {
             // Print sent messages in green
             printf(GREEN "<-- %s" RESET, buff);
             printf(WHITE); // Reset color to white for the next input
         }
 
         // If the client types "exit", the connection is closed
-        if ((strncmp(buff, "exit", 4)) == 0) {
+        if ((strncmp(buff, "exit", 4)) == 0)
+        {
             printf(RED "Client Exit...\n" RESET);
             break;
         }
     }
-}
+};
 
-int main() {
+int main()
+{
     int sockfd;
     struct sockaddr_in servaddr;
 
     // Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
+    if (sockfd == -1)
+    {
         printf(RED "Socket creation failed...\n" RESET);
         exit(0);
-    } else {
+    }
+    else
+    {
         printf(GREEN "Socket successfully created..\n" RESET);
     }
     bzero(&servaddr, sizeof(servaddr));
@@ -74,15 +102,21 @@ int main() {
     servaddr.sin_port = htons(PORT);
 
     // Connect the client to the server
-    if (connect(sockfd, (SA *)&servaddr, sizeof(servaddr)) != 0) {
+    if (connect(sockfd, (SA *)&servaddr, sizeof(servaddr)) != 0)
+    {
         printf(RED "Connection with the server failed...\n" RESET);
         exit(0);
-    } else {
+    }
+    else
+    {
         printf(GREEN "Connected to the server..\n" RESET);
     }
 
+    void printMenu();
+
     // Start receiving messages
-    if (fork() == 0) {
+    if (fork() == 0)
+    {
         receiveMessages(sockfd);
     }
 
