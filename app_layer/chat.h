@@ -51,6 +51,9 @@ struct stringify_result
     action_status reply;
 };
 
-char* stringify(struct chat_message *msg, struct stringify_result *result);
+void initialize_new_msg(struct chat_message *newMsg);
+void stringify(char *buffer, struct chat_message *msg, struct stringify_result *result);
 int parse(char *buffer, struct chat_message *msg);
 char* readMessage(char *buffer, int client_index);
+void fill_chat_message(struct chat_message *msg, char *protocolVersion, char *action, char *status, char *message, char *additionalData[], int num_additionalData);
+void free_chat_message(struct chat_message *msg);

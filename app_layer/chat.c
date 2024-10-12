@@ -110,6 +110,7 @@
 #include "chat.h"
 #include "../server.h"
 #include <string.h>
+#include "../utils.h"
 
 const char *ActionOptions[] = {
     CHAT_ACTION_JOIN,
@@ -143,40 +144,24 @@ const char *SendStatus[] = {
 
 int current_buffer_pos = 0;
 
-void buffer_write_header(int actionOrStatus, char buffer[], struct chat_message *msg, const char *methodStatus[], struct stringify_result *result)
+void buffer_write_header(int isAction, char buffer[], struct chat_message *msg, const char *methodStatus[], struct stringify_result *result)
 {
-    const char *selected_string = actionOrStatus ? msg->action : msg->status; // Choose action or option 1=action 0=option
-    int selected_length = actionOrStatus ? msg->action_length : msg->status_length;
+    const char *selected_string = isAction ? msg->action : msg->status; // Choose action or option 1=action 0=option
+    int selected_length = isAction ? msg->action_length : msg->status_length;
 
     for (int i = 0; methodStatus[i] != NULL; i++)
     {
         if (strcmp(selected_string, methodStatus[i]) == 0)
         {
-
             strncpy(&buffer[current_buffer_pos], selected_string, selected_length);
             current_buffer_pos += selected_length;
-
-            buffer[current_buffer_pos] = '/';
-            current_buffer_pos++;
-
+            buffer[current_buffer_pos++] = '/';
             return;
         }
     }
-
     if (buffer[current_buffer_pos] == '\0')
     {
         result->reply = CHAT_GET_BAD_OPTION;
-    }
-}
-
-void free_chat_message(struct chat_message *msg)
-{
-    free(msg->protocolVersion);
-    free(msg->action);
-    free(msg->status);
-    for (int i = 0; i < msg->num_additionalData; i++)
-    {
-        free(msg->additionalData[i]);
     }
 }
 
@@ -186,17 +171,17 @@ void stringify_result_factory(struct stringify_result *result)
     result->reply = CHAT_GET_EMPTY;
 };
 
-char *stringify(
+void stringify(
+    char buffer[CHAT_MSG_MAXSIZE],
     struct chat_message *msg,
     struct stringify_result *result)
 {
 
-    char *buffer = (char *)malloc(CHAT_MSG_MAXSIZE * sizeof(char));
+    //char *buffer = (char *)malloc(CHAT_MSG_MAXSIZE * sizeof(char));
     stringify_result_factory(result);
     current_buffer_pos = 0;
 
-    // Add the protocol version to the buffer only once
-
+    // Protocol version
     const char *protocol_prefix = "MCP/";
     int prefix_length = strlen(protocol_prefix);
     strncpy(buffer + current_buffer_pos, protocol_prefix, prefix_length);
@@ -207,8 +192,10 @@ char *stringify(
     current_buffer_pos += protocol_length;
     buffer[current_buffer_pos++] = '/';
 
+    // Add action to the buffer
     buffer_write_header(1, buffer, msg, ActionOptions, result);
 
+    // Add status to the buffer
     if (strcmp(msg->action, CHAT_ACTION_JOIN) == 0)
     {
         buffer_write_header(0, buffer, msg, JoinStatus, result);
@@ -229,13 +216,16 @@ char *stringify(
     {
         result->reply = CHAT_GET_BAD_ACTION;
         free(buffer);
-        return NULL;
+        printf("Error: Action is empty\n");
+        return;
+        //return NULL;
     }
 
-    /*
-    //Add additional data to the buffer
-    for (int i = 0; i < msg->num_additionalData; i++) {
-        if (msg->additionalData[i] != NULL) {
+    // Add additional data to the buffer
+    for (int i = 0; i < msg->num_additionalData; i++)
+    {
+        if (msg->additionalData[i] != NULL)
+        {
             strncpy(&buffer[current_buffer_pos], msg->additionalData[i], strlen(msg->additionalData[i]));
             current_buffer_pos += strlen(msg->additionalData[i]);
             buffer[current_buffer_pos++] = '/';
@@ -243,11 +233,15 @@ char *stringify(
     }
 
 
-    if (msg->message_length > CHAT_MSG_MAXSIZE - current_buffer_pos - 1) { // -1 for the newline
+    // Add message to the buffer
+    if (msg->message_length > CHAT_MSG_MAXSIZE - current_buffer_pos - 1)
+    { // -1 for the newline
         result->reply = CHAT_GET_BAD_MSG;
         free(buffer);
-        return NULL;
-    } else {
+        return;
+    }
+    else
+    {
         // Add the message to the buffer
         strncpy(&buffer[current_buffer_pos], "\r\n", 2);
         current_buffer_pos += 2;
@@ -255,67 +249,130 @@ char *stringify(
         strncpy(&buffer[current_buffer_pos], msg->message, msg->message_length);
         current_buffer_pos += msg->message_length;
 
-
         buffer[current_buffer_pos] = '\n';
         current_buffer_pos++;
     }
 
-    buffer[current_buffer_pos] = '\0'; */
+    buffer[current_buffer_pos] = '\0';
 
-    return buffer;
+    //return buffer;
+    return;
 }
 
-/*
-int parse(char buffer[], struct chat_message *msg) {
-    if (buffer == NULL || msg == NULL) {
-        return -1; // Error: invalid input
-    }
+int parse(char buffer[], struct chat_message *msg)
+{
+    if (buffer == NULL || msg == NULL)
+        return -1;
 
-    // Tokenize the message using "/" as a delimiter
-    char *save_ptr;
-    char *token = strtok_r(buffer, "/", &save_ptr);
+    char *ptr = buffer, *end;
 
-    // First part should be "MCP"
-    if (token == NULL || strcmp(token, "MCP") != 0) {
-        return -1; // Error: invalid protocol prefix
-    }
+    if (strncmp(ptr, "MCP", 3) != 0 || ptr[3] != '/')
+        return -1;
+    ptr += 4;
 
-    // Extract protocol version
-    token = strtok_r(NULL, "/", &save_ptr);
-    if (token == NULL) {
-        return -1; // Error: missing protocol version
-    }
-    msg->protocolVersion = strdup(token); // Use strdup to allocate memory for protocolVersion
+    // Protocol version
+    end = strchr(ptr, '/');
+    if (!end)
+        return -1;
+    msg->protocolVersion = strndup(ptr, end - ptr);
+    ptr = end + 1;
 
-    // Extract action
-    token = strtok_r(NULL, "/", &save_ptr);
-    if (token == NULL) {
-        return -1; // Error: missing action
-    }
-    msg->action = strdup(token); // Use strdup to allocate memory for action
-    msg->action_length = strlen(token);
+    // Action
+    end = strchr(ptr, '/');
+    
+    if (!end)
+        return -1;
+    msg->action = strndup(ptr, end - ptr);
+    msg->action_length = end - ptr;
+    ptr = end + 1;
 
-    // Extract status (e.g., OK_S, ERROR_4)
-    token = strtok_r(NULL, "/", &save_ptr);
-    if (token == NULL) {
-        return -1; // Error: missing status
-    }
-    msg->status = strdup(token); // Use strdup to allocate memory for status
-    msg->status_length = strlen(token);
+    // Status
+    end = strchr(ptr, '/');
+    if (!end)
+        return -1;
+    msg->status = strndup(ptr, end - ptr);
+    msg->status_length = end - ptr;
+    ptr = end + 1;
 
-    // Parse additional data if available (e.g., E_MTD, CH, etc.)
+    // Additional data
     msg->num_additionalData = 0;
-    while ((token = strtok_r(NULL, "/", &save_ptr)) != NULL) {
-        if (msg->num_additionalData >= MAX_ADDITIONAL_DATA) {
-            return -1; // Error: too many additional data entries
-        }
-        msg->additionalData[msg->num_additionalData] = strdup(token); // Allocate memory for each additionalData entry
+    while ((end = strchr(ptr, '/')) != NULL)
+    {
+        if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
+            return -1;
+
+        msg->additionalData[msg->num_additionalData] = strndup(ptr, end - ptr);
         msg->num_additionalData++;
+        ptr = end + 1;
     }
 
-    return 0; // Success
+    if (*ptr != '\0')
+    {
+        //if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
+        //    return -1;
+        
+        //MSG:<message>
+        msg->message = strdup(ptr+4);
+        //msg->additionalData[msg->num_additionalData] = strdup(ptr);
+        //msg->num_additionalData++;
+    }
+
+    return 0;
 }
-*/
+
+void initialize_new_msg(struct chat_message *newMsg)
+{
+    newMsg = malloc(sizeof(struct chat_message) * 2 * sizeof(char));
+
+    if (newMsg == NULL)
+    {
+        printf("Error: Memory allocation failed\n");
+    }
+
+    memset(newMsg, 0, sizeof(struct chat_message)); // Initialize to zero
+    int msg_length = 200;
+
+    if (!newMsg)
+    {
+        fprintf(stderr, "Error: newMsg is NULL\n");
+    }
+
+    newMsg->protocolVersion = malloc(20 * sizeof(char));
+    newMsg->message = malloc(msg_length * sizeof(char));
+
+    for (int i = 0; i < MAX_ADDITIONAL_DATA; i++)
+    {
+        newMsg->additionalData[i] = malloc(50 * sizeof(char));
+    }
+}
+
+void fill_chat_message(
+    struct chat_message *msg,
+    char *protocolVersion,
+    char *action,
+    char *status,
+    char *message,
+    char *additionalData[],
+    int num_additionalData) 
+{
+    msg->protocolVersion = strdup(protocolVersion);
+    msg->action = strdup(action);
+    msg->action_length = strlen(action);
+    msg->status = strdup(status);
+    msg->status_length = strlen(status);
+    msg->message = strdup(message);
+    msg->message_length = strlen(message);
+
+    if (additionalData != NULL && num_additionalData > 0)
+    {
+        msg->num_additionalData = num_additionalData;
+        for (int i = 0; i < num_additionalData; i++)
+        {
+            msg->additionalData[i] = strdup(additionalData[i]);
+        }
+
+    }
+}
 
 void print_chat_message(struct chat_message *msg)
 {
@@ -328,185 +385,37 @@ void print_chat_message(struct chat_message *msg)
     printf("Protocol Version: %s\n", msg->protocolVersion ? msg->protocolVersion : "NULL");
     printf("Action: %s\n", msg->action ? msg->action : "NULL");
     printf("Status: %s\n", msg->status ? msg->status : "NULL");
+    printf("Message: %s\n", msg->message ? msg->message : "NULL");
     printf("Additional Data:\n");
+
     for (int i = 0; i < msg->num_additionalData; i++)
     {
         printf("  %s\n", msg->additionalData[i] ? msg->additionalData[i] : "NULL");
     }
 }
 
-int parse(char buffer[], struct chat_message *msg)
+void free_chat_message(struct chat_message *msg)
 {
-
-    if (buffer == NULL || msg == NULL)
+    
+    free(msg->protocolVersion);
+    free(msg->action);
+    free(msg->status);
+    free(msg->message);
+    for (int i = 0; i < msg->num_additionalData; i++)
     {
-        return -1; // Error: invalid input
+        free(msg->additionalData[i]);
     }
 
-    char *ptr = buffer;
-    char *end;
-
-    // Ensure buffer starts with "MCP"
-    if (strncmp(ptr, "MCP", 3) != 0 || ptr[3] != '/')
-    {
-        return -1; // Error: invalid protocol prefix
-    }
-    ptr += 4; // Move past "MCP/"
-
-    // Extract protocol version
-    end = strchr(ptr, '/');
-    if (end == NULL)
-    {
-        return -1; // Error: missing protocol version
-    }
-    msg->protocolVersion = strndup(ptr, end - ptr); // Allocate memory for protocolVersion
-    ptr = end + 1;                                  // Move past the delimiter
-
-    // Extract action
-    end = strchr(ptr, '/');
-    if (end == NULL)
-    {
-        return -1; // Error: missing action
-    }
-    msg->action = strndup(ptr, end - ptr); // Allocate memory for action
-    msg->action_length = end - ptr;
-    ptr = end + 1; // Move past the delimiter
-
-    // Extract status
-    end = strchr(ptr, '/');
-    if (end == NULL)
-    {
-        return -1; // Error: missing status
-    }
-    msg->status = strndup(ptr, end - ptr); // Allocate memory for status
-    msg->status_length = end - ptr;
-    ptr = end + 1; // Move past the delimiter
-
-    // Parse additional data if available (e.g., E_MTD, CH, etc.)
-    msg->num_additionalData = 0;
-    while ((end = strchr(ptr, '/')) != NULL)
-    {
-        if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
-        {
-            return -1; // Error: too many additional data entries
-        }
-        msg->additionalData[msg->num_additionalData] = strndup(ptr, end - ptr); // Allocate memory for each additionalData entry
-        msg->num_additionalData++;
-        ptr = end + 1; // Move past the delimiter
-    }
-
-    // Handle any remaining data (in case there's no trailing slash)
-    if (*ptr != '\0')
-    {
-        if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
-        {
-            return -1; // Error: too many additional data entries
-        }
-        msg->additionalData[msg->num_additionalData] = strdup(ptr); // Allocate memory for the last additionalData entry
-        msg->num_additionalData++;
-    }
-
-    print_chat_message(msg);
-    return 0; // Success
-}
-
-// E_MTD:SEND -> E_MTD
-char *getStringKey(const char *string)
-{
-    if (string == NULL)
-        return NULL;
-
-    // Find the first occurrence of the ':' character
-    char *colon_pos = strchr(string, ':');
-    if (colon_pos == NULL)
-    {
-        return NULL;
-    }
-
-    // Calculate the length of the key part (from the start to the colon)
-    size_t key_length = colon_pos - string;
-
-    // Allocate memory for the key and copy the key part
-    char *key = (char *)malloc(key_length + 1);
-    if (key == NULL)
-    {
-        return NULL;
-    }
-
-    strncpy(key, string, key_length);
-    key[key_length] = '\0'; // Null-terminate the string
-
-    return key;
-}
-
-// E_MTD:SEND -> SEND
-char *getStringValue(const char *string)
-{
-    if (string == NULL)
-        return NULL;
-
-    // Find the first occurrence of the ':' character
-    char *colon_pos = strchr(string, ':');
-    if (colon_pos == NULL)
-    {
-        return NULL;
-    }
-
-    char *value = colon_pos + 1;
-    char *result = strdup(value);
-    return result;
-}
-
-void initialize_new_msg(struct chat_message *newMsg)
-{
-    if (newMsg == NULL)
-    {
-        fprintf(stderr, "Error: newMsg is NULL\n");
-        return;
-    }
-
-    // Asignación de memoria para `protocolVersion`
-    newMsg->protocolVersion = malloc(20 * sizeof(char)); // Tamaño arbitrario
-    if (newMsg->protocolVersion == NULL)
-    {
-        fprintf(stderr, "Error: Memory allocation failed for protocolVersion\n");
-        free_chat_message(newMsg); // Liberar memoria previamente asignada
-        return;
-    }
-
-    // Asignación de memoria para `message`
-    newMsg->message = malloc(100 * sizeof(char)); // Tamaño arbitrario
-    if (newMsg->message == NULL)
-    {
-        fprintf(stderr, "Error: Memory allocation failed for message\n");
-        free_chat_message(newMsg);
-        return;
-    }
-
-    // Asignación de memoria para `additionalData` (cada cadena en el arreglo)
-    for (int i = 0; i < MAX_ADDITIONAL_DATA; i++)
-    {
-        newMsg->additionalData[i] = malloc(50 * sizeof(char)); // Tamaño arbitrario
-        if (newMsg->additionalData[i] == NULL)
-        {
-            fprintf(stderr, "Error: Memory allocation failed for additionalData[%d]\n", i);
-            free_chat_message(newMsg);
-            return;
-        }
-    }
+    msg->protocolVersion = NULL;
+    msg->action = NULL;
+    msg->status = NULL;
+    msg->message = NULL;
 }
 
 char *readMessage(char *buffer, int client_index)
 {
+    struct chat_message *newMsg;
 
-    struct chat_message *newMsg = malloc(sizeof(struct chat_message) * 2 * sizeof(char));
-
-    if (newMsg == NULL)
-    {
-        return "Error: Memory allocation failed";
-    }
-
-    memset(newMsg, 0, sizeof(struct chat_message)); // Initialize to zero
     initialize_new_msg(newMsg);
 
     struct stringify_result result;
@@ -520,18 +429,81 @@ char *readMessage(char *buffer, int client_index)
 
     if (strcmp(newMsg->action, CHAT_ACTION_GET) == 0)
     {
-        if (strcmp(getStringValue(newMsg->additionalData[1]), "LIST") == 0)
+        // e.g. "MCP/1.0/GET/CODE:0/E_MTD:SEND/RESOURCE:LIST"
+        if (strcmp(getStringValue(newMsg->additionalData[1]), "JOIN") == 0)
         {
-            newMsg->message = list_users(client_index);
+            newMsg->action = CHAT_ACTION_SEND;
+            newMsg->status = CHAT_SEND_SUCCESS;
+            newMsg->num_additionalData = 1;
+            newMsg->additionalData[0] = strdup("E_MTD:SEND");
+            //newMsg->message = list_users(client_index);
+            //return stringify(newMsg, &result);
+        }else if (strcmp(getStringValue(newMsg->additionalData[1]), "LIST") == 0)
+        {
             newMsg->action = CHAT_ACTION_SEND;
             newMsg->status = CHAT_SEND_SUCCESS;
             newMsg->num_additionalData = 1;
             newMsg->additionalData[0] = strdup("E_MTD:SEND"); // Duplicate the string
-
-            return stringify(newMsg, &result);
+            //newMsg->message = list_users(client_index);
+            //return stringify(newMsg, &result);
         }
     }
 
     free_chat_message(newMsg); // Clean up
     return "Error: Unsupported action";
 }
+
+
+/*
+void test_stringify() {
+    struct chat_message msg;
+    initialize_new_msg(&msg);
+    struct stringify_result result;
+    
+    // Example data to fill the message
+    char *additionalData[] = {"E_MTD:SEND", "RESOURCE:LIST"};
+    fill_chat_message(&msg, "1.0", CHAT_ACTION_SEND, CHAT_SEND_SUCCESS, "Hello, World!", additionalData, 2);
+    printf("Filling chat message...\n");
+
+    print_chat_message(&msg);
+    /*char *result_string = stringify(&msg, &result);
+    if (result.reply == CHAT_GET_EMPTY) {
+        printf("stringify failed: %s\n", result.reply);
+    } else {
+        printf("stringify result: %s\n", result_string);
+    }
+
+    //free(result_string);
+    free_chat_message(&msg);
+}
+
+// Helper function to test parse
+void test_parse() {
+    struct chat_message msg;
+
+    initialize_new_msg(&msg);
+    char buffer[256];
+
+    // Valid message
+    strcpy(buffer, "MCP/1.0/SEND/SUCCESS/E_MTD:SEND/RESOURCE:LIST/MSG:Hello, World!");
+
+   
+    int parseResult = parse(buffer, &msg); // Parse the buffer
+    if (parseResult == 0) {
+        print_chat_message(&msg); // Print only if parse was successful
+    } else {
+        printf("Error: Invalid message format\n");
+    }
+
+    free_chat_message(&msg);
+}
+
+// Main test function
+int main() {
+    printf("Running tests for stringify function...\n");
+    test_stringify();
+    printf("\nRunning tests for parse function...\n");
+    test_parse();
+
+    return 0;
+}*/

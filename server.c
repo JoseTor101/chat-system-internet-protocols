@@ -8,10 +8,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include "utils.h"
 #include "constants.h"
 #include "methods.h"
 #include "app_layer/chat.h"
+#include "utils.h"
 
 struct Client
 {
@@ -23,6 +23,12 @@ struct Client
 
 struct Client available_clients[MAX_CLIENTS]; // Store client connections
 int num_clients = 0;
+
+struct chat_message readMsg;
+struct chat_message sendMsg;
+struct stringify_result result;
+char buffer[CHAT_MSG_MAXSIZE];
+
 
 /* ASSOCIATED MUTEX FUNCTIONS
  *
@@ -101,32 +107,56 @@ char *list_users(int sockfd) {
  */
 void assign_username(int connfd)
 {
+    
     char username[NAME_LENGTH] = {0}; // Buffer to store the username
 
     while (strlen(available_clients[num_clients - 1].username) == 0)
     {
-        char msg[52];
-        snprintf(msg, sizeof(msg), "Please assign yourself a username (Max 10 chars.)\n");
-        write(connfd, msg, strlen(msg));
+        //char msg[52];
+        //snprintf(msg, sizeof(msg), "Please assign yourself a username (Max 10 chars.)\n");
 
-        int n = read(connfd, username, sizeof(username) - 1); // Read username from socket
+        initialize_new_msg(&sendMsg);
+        char *aditionalData[] = {"E_MTD:SEND"};
 
-        if (n > 0)
+        fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:100", "Please assign yourself a username (Max 10 chars.)", aditionalData, 1);
+        stringify(buffer, &sendMsg, &result);
+
+     
+        printf("Sending message: %s\n", buffer);
+        write(connfd, buffer, strlen(buffer));
+
+        bzero(buffer, sizeof(buffer));
+        free_chat_message(&sendMsg);
+        //write(connfd, msg, strlen(msg));
+
+
+        //int n = read(connfd, username, sizeof(username) - 1); // Read username from socket
+        int n = read(connfd, buffer, sizeof(buffer) - 1); // Read username from socket
+        initialize_new_msg(&readMsg);
+        int resultParse = parse(buffer, &readMsg);
+
+        if (resultParse != -1)
         {
+            //If message to long handle error [add]
+            strcpy(username, readMsg.message);
             username[n - 1] = '\0';
 
             pthread_mutex_lock(&clients_mutex); // Lock before modifying
             strncpy(available_clients[num_clients - 1].username, username, NAME_LENGTH - 1);
             pthread_mutex_unlock(&clients_mutex); // Unlock after modifying
+
+
         }
         else
         {
             printf("Error reading username from client %d\n", connfd);
             break;
         }
+
+        free_chat_message(&readMsg);
+        bzero(buffer, sizeof(buffer));
     }
 }
-
 
 
 /**
@@ -198,7 +228,7 @@ void *client_handler(void *connfd_ptr)
     pthread_mutex_unlock(&clients_mutex);
 
 
-    //assign_username(connfd);
+    assign_username(connfd);
     //list_users(connfd);
 
     char msg[] = "Connect using: \n select <channel>\n";
@@ -215,12 +245,26 @@ void *client_handler(void *connfd_ptr)
             close(connfd);
             pthread_exit(NULL);
         }
+        
+
+        /*if(available_clients[client_index].paired != -1)
+        {
+            char message[MAX_MSG];
+            snprintf(message, sizeof(message), "Message from %s: %.*s",
+                    available_clients[client_index].username,
+                    (int)(MAX_MSG - (14 + strlen(available_clients[client_index].username))),
+                    buff);
+
+            int target = available_clients[client_index].paired;
+            write(available_clients[target].sockfd, message, strlen(message));
+        }*/
+
 
         //  buff = "MCP/1.0/GET/CODE:0/E_MTD:SEND/RESOURCE:<resource>"
 
         //char *newMsg = readMessage(buff, client_index);
-        char *newMsg = readMessage("MCP/1.0/GET/CODE:0/E_MTD:SEND/RESOURCE:LIST", client_index);
-        write(connfd, newMsg, sizeof(newMsg));
+        //char *newMsg = readMessage("MCP/1.0/GET/CODE:0/E_MTD:SEND/RESOURCE:LIST", client_index);
+        //write(connfd, newMsg, sizeof(newMsg));
         
         // Check command
         //extract_command(buff, command, sizeof(command));
@@ -290,11 +334,6 @@ void *client_handler(void *connfd_ptr)
     }
 
     return NULL;
-}
-
-void sendMessage(char *message, int sockfd)
-{
-    write(sockfd, message, strlen(message));
 }
 
 
