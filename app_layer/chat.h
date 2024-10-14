@@ -56,4 +56,5 @@ void stringify(char *buffer, struct chat_message *msg, struct stringify_result *
 int parse(char *buffer, struct chat_message *msg);
 char* readMessage(char *buffer, int client_index);
 void fill_chat_message(struct chat_message *msg, char *protocolVersion, char *action, char *status, char *message, char *additionalData[], int num_additionalData);
+void print_chat_message(struct chat_message *msg);
 void free_chat_message(struct chat_message *msg);

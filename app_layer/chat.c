@@ -172,7 +172,7 @@ void stringify_result_factory(struct stringify_result *result)
 };
 
 void stringify(
-    char buffer[CHAT_MSG_MAXSIZE],
+    char *buffer,
     struct chat_message *msg,
     struct stringify_result *result)
 {
@@ -305,14 +305,15 @@ int parse(char buffer[], struct chat_message *msg)
         msg->num_additionalData++;
         ptr = end + 1;
     }
-
+    
     if (*ptr != '\0')
     {
+        //printf("ptr: %s\n", ptr);
         //if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
         //    return -1;
         
         //MSG:<message>
-        msg->message = strdup(ptr+4);
+        msg->message = strdup(ptr+2);
         //msg->additionalData[msg->num_additionalData] = strdup(ptr);
         //msg->num_additionalData++;
     }
@@ -322,7 +323,7 @@ int parse(char buffer[], struct chat_message *msg)
 
 void initialize_new_msg(struct chat_message *newMsg)
 {
-    newMsg = malloc(sizeof(struct chat_message) * 2 * sizeof(char));
+    newMsg = malloc(sizeof(struct chat_message) * sizeof(char));
 
     if (newMsg == NULL)
     {
@@ -330,6 +331,7 @@ void initialize_new_msg(struct chat_message *newMsg)
     }
 
     memset(newMsg, 0, sizeof(struct chat_message)); // Initialize to zero
+    //change value
     int msg_length = 200;
 
     if (!newMsg)
@@ -363,7 +365,7 @@ void fill_chat_message(
     msg->message = strdup(message);
     msg->message_length = strlen(message);
 
-    if (additionalData != NULL && num_additionalData > 0)
+    if (num_additionalData > 0)
     {
         msg->num_additionalData = num_additionalData;
         for (int i = 0; i < num_additionalData; i++)
@@ -386,11 +388,15 @@ void print_chat_message(struct chat_message *msg)
     printf("Action: %s\n", msg->action ? msg->action : "NULL");
     printf("Status: %s\n", msg->status ? msg->status : "NULL");
     printf("Message: %s\n", msg->message ? msg->message : "NULL");
-    printf("Additional Data:\n");
 
-    for (int i = 0; i < msg->num_additionalData; i++)
+
+    if (msg->num_additionalData > 0)
     {
-        printf("  %s\n", msg->additionalData[i] ? msg->additionalData[i] : "NULL");
+        printf("Additional Data:\n");
+        for (int i = 0; i < msg->num_additionalData; i++)
+        {
+            printf("  %s\n", msg->additionalData[i] ? msg->additionalData[i] : "NULL");
+        }
     }
 }
 
