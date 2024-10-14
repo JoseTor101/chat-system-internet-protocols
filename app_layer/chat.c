@@ -248,8 +248,8 @@ void stringify(
     else
     {
         // Add the message to the buffer
-        strncpy(&buffer[current_buffer_pos], "\r\n", 2);
-        current_buffer_pos += 2;
+        strncpy(&buffer[current_buffer_pos], "MSG:\r\n", 6);
+        current_buffer_pos += 6;
 
         strncpy(&buffer[current_buffer_pos], msg->message, msg->message_length);
         current_buffer_pos += msg->message_length;
@@ -317,8 +317,9 @@ int parse(char buffer[], struct chat_message *msg)
         //if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
         //    return -1;
         
-        //MSG:<message>
-        msg->message = strdup(ptr+2);
+        //MSG:\r\n<message>
+        msg->message = strdup(ptr+6);
+        msg->message_length = strlen(msg->message);
         //msg->additionalData[msg->num_additionalData] = strdup(ptr);
         //msg->num_additionalData++;
     }
@@ -464,57 +465,3 @@ char *readMessage(char *buffer, int client_index)
     return "Error: Unsupported action";
 }
 
-
-/*
-void test_stringify() {
-    struct chat_message msg;
-    initialize_new_msg(&msg);
-    struct stringify_result result;
-    
-    // Example data to fill the message
-    char *additionalData[] = {"E_MTD:SEND", "RESOURCE:LIST"};
-    fill_chat_message(&msg, "1.0", CHAT_ACTION_SEND, CHAT_SEND_SUCCESS, "Hello, World!", additionalData, 2);
-    printf("Filling chat message...\n");
-
-    print_chat_message(&msg);
-    /*char *result_string = stringify(&msg, &result);
-    if (result.reply == CHAT_GET_EMPTY) {
-        printf("stringify failed: %s\n", result.reply);
-    } else {
-        printf("stringify result: %s\n", result_string);
-    }
-
-    //free(result_string);
-    free_chat_message(&msg);
-}
-
-// Helper function to test parse
-void test_parse() {
-    struct chat_message msg;
-
-    initialize_new_msg(&msg);
-    char buffer[256];
-
-    // Valid message
-    strcpy(buffer, "MCP/1.0/SEND/SUCCESS/E_MTD:SEND/RESOURCE:LIST/MSG:Hello, World!");
-
-   
-    int parseResult = parse(buffer, &msg); // Parse the buffer
-    if (parseResult == 0) {
-        print_chat_message(&msg); // Print only if parse was successful
-    } else {
-        printf("Error: Invalid message format\n");
-    }
-
-    free_chat_message(&msg);
-}
-
-// Main test function
-int main() {
-    printf("Running tests for stringify function...\n");
-    test_stringify();
-    printf("\nRunning tests for parse function...\n");
-    test_parse();
-
-    return 0;
-}*/
