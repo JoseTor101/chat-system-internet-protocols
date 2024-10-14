@@ -9,9 +9,11 @@ typedef char *action_status;
 #define CHAT_ACTION_GET "GET"
 #define CHAT_ACTION_SEND "SEND"
 #define CHAT_ACTION_EMPTY "..."
-
 #define CHAT_JOIN_SUCCESS "OK_J"
 #define CHAT_JOIN_FAIL "ERROR 1"
+
+#define CHAT_MSG_CONNECT "CONNECT"
+#define CHAT_MSG_DISCONNECT "DISCONNECT"
 
 #define CHAT_LEAVE_SUCCESS "OK_L"
 #define CHAT_LEAVE_FAIL "ERROR_2"

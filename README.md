@@ -8,7 +8,8 @@
 
 - Compile client with:
 
- ```gcc -g -o client client.c app_layer/chat.c utils.c ```
+ ```gcc -g -o client client.c app_layer/chat.c utils.c queue.c -lpthread```
+
  
 ### Run with:
 
