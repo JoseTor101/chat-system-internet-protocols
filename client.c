@@ -115,12 +115,11 @@ void sendMessages(int sockfd)
     }
 }
 
-
 void receiveMessages(int sockfd)
 {
     // printf("Receiving messages...\n");
     int n;
-    for(;;)
+    for (;;)
     {
         bzero(buff, sizeof(buff));
         initialize_new_msg(&readMsg); // Initialize readMsg for a new message
@@ -147,56 +146,53 @@ void receiveMessages(int sockfd)
                 {
 
                     char *action = "SEND";
+                    printf("Aditional data: %d\n", readMsg.num_additionalData);
 
-            
-                    if (strcmp(action, CHAT_ACTION_SEND) == 0)
+                    if (readMsg.num_additionalData > 0)
                     {
-                        char *additionalData[] = {"E_MTD:SEND"};
-                        fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:0",buff , additionalData, 1);
-                        stringify(buff, &sendMsg, &result);
-                    }
-                    else if (strcmp(action, CHAT_ACTION_JOIN) == 0)
-                    {
-                        char *additionalData[] = {"E_MTD:SEND"};
-                        fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_JOIN, "CODE:0", buff, additionalData, 1);
-                        stringify(buff, &sendMsg, &result);
-                        
-                    }
-                    else if (strcmp(action, CHAT_ACTION_GET) == 0)
-                    {
-                        char *additionalData[] = {"E_MTD:SEND"};
-                        fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_GET, "CODE:0", buff, additionalData, 1);
-                        stringify(buff, &sendMsg, &result);
-                        
-                    }
-                    else if (strcmp(action, CHAT_ACTION_LEAVE) == 0)
-                    {
-                        char *additionalData[] = {"E_MTD:..."}; // Just an example
-                        fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_LEAVE, "CODE:0", buff, additionalData, 1);
-                        stringify(buff, &sendMsg, &result);
-                    }
-                    else
-                    {
-                        printf("Invalid action\n");
-                    }
+                        if (strcmp(getStringValue(readMsg.additionalData[0]), CHAT_ACTION_SEND) == 0)
+                        {
+                            char *additionalData[] = {"E_MTD:SEND"};
+                            fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:0", buff, additionalData, 1);
+                        }
+                        else if (strcmp(getStringValue(readMsg.additionalData[0]), CHAT_ACTION_JOIN) == 0)
+                        {
+                            char *additionalData[] = {"E_MTD:SEND"};
+                            fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_JOIN, "CODE:0", buff, additionalData, 1);
+                        }
+                        else if (strcmp(getStringValue(readMsg.additionalData[0]), CHAT_ACTION_GET) == 0)
+                        {
+                            char *additionalData[] = {"E_MTD:SEND"};
+                            fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_GET, "CODE:0", buff, additionalData, 1);
+                        }
+                        else if (strcmp(getStringValue(readMsg.additionalData[0]), CHAT_ACTION_LEAVE) == 0)
+                        {
+                            char *additionalData[] = {"E_MTD:..."};
+                            fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_LEAVE, "CODE:0", buff, additionalData, 1);
+                        }
+                        else
+                        {
+                            printf("Invalid action\n");
+                        }
 
-                    printf("------------\n");
-                    printf("Sending message: %s\n", buff);
-                    print_chat_message(&sendMsg);
-                    printf("------------\n");
+                        stringify(buff, &sendMsg, &result);
+                        printf("------------\n");
+                        printf("Sending message: %s\n", buff);
+                        print_chat_message(&sendMsg);
+                        printf("------------\n");
 
-                    write(sockfd, buff, sizeof(buff));
-                    // Exit command
+                        write(sockfd, buff, sizeof(buff));
+                        // Exit command
 
-                    if ((strncmp(buff, "exit", 4)) == 0)
-                    {
-                        printf(RED "Client Exit...\n" RESET);
-                        break;
+                        if ((strncmp(buff, "exit", 4)) == 0)
+                        {
+                            printf(RED "Client Exit...\n" RESET);
+                            break;
+                        }
                     }
                 }
             }
         }
-        // print_chat_message(&readMsg);
     }
 }
 
@@ -222,7 +218,6 @@ void func(int sockfd)
     }
 }
 */
-
 
 int main()
 {
@@ -262,9 +257,9 @@ int main()
     // if (fork() == 0)
     receiveMessages(sockfd); // Child process to receive messages
 
-    //func(sockfd);
-    // Function to send messages to the server
-    // sendMessages(sockfd); // Parent process to send messages
+    // func(sockfd);
+    //  Function to send messages to the server
+    //  sendMessages(sockfd); // Parent process to send messages
 
     // Close socket
     close(sockfd);

@@ -221,6 +221,11 @@ void stringify(
         //return NULL;
     }
 
+    // Append status code
+    strncpy(buffer + current_buffer_pos, msg->status, msg->status_length);
+    current_buffer_pos += msg->status_length;
+    buffer[current_buffer_pos++] = '/';
+
     // Add additional data to the buffer
     for (int i = 0; i < msg->num_additionalData; i++)
     {

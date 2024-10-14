@@ -120,6 +120,10 @@ void assign_username(int connfd)
         fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:100", "Please assign yourself a username (Max 10 chars.)", aditionalData, 1);
         stringify(buffer, &sendMsg, &result);
 
+        printf("-------\n");
+        print_chat_message(&sendMsg);
+        printf("-------\n");
+
         write(connfd, buffer, strlen(buffer));
 
         bzero(buffer, sizeof(buffer));
@@ -164,10 +168,11 @@ void assign_username(int connfd)
         char *aditionalData1[] = {"E_MTD:GET"};
         snprintf(welcome_msg, sizeof(welcome_msg), "Welcome, %s\n", username);
         fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:100", welcome_msg, aditionalData1, 1);
-        
+        printf("-------\n");
+        print_chat_message(&sendMsg);
+        printf("-------\n");
 
         stringify(buffer, &sendMsg, &result);
-
 
         write(connfd, buffer, strlen(buffer));
 
