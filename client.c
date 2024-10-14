@@ -15,6 +15,7 @@
 #define PORT 8080
 #define SA struct sockaddr
 
+struct chat_message readMsg;
 struct chat_message sendMsg;
 struct stringify_result result;
 char buff[CHAT_MSG_MAXSIZE];  // Buffer for messages
@@ -22,23 +23,32 @@ char buff[CHAT_MSG_MAXSIZE];  // Buffer for messages
 // Queue for messages
 queue_t* message_queue;  // Pointer to the message queue
 
+queue_t* action_queue; // Pointer to the protocol queue
+
 // Function to send chat messages from input
 void* sendChatMessages(void* sockfd_ptr) {
     int sockfd = *(int*) sockfd_ptr;
     while (1) {
         bzero(buff, sizeof(buff));
-        printf("ME: ");
         fgets(buff, sizeof(buff), stdin);
 
         if (strlen(buff) > 1) {
             initialize_new_msg(&sendMsg);
-            printf("....................\n");
-            printf("BUFFER: %s\n", buff);
-            fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:0", buff, NULL, 0);
+            if(strncasecmp(buff, "LIST", 4) == 0){
+                char *aditionalData[] = {"E_MTD:SEND"};
+                fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_GET, "CODE:0", buff, aditionalData, 1);
+            }else if(strncasecmp(buff, "CONNECT", 7) == 0){
+                char *aditionalData[] = {"E_MTD:SEND"};
+                fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_JOIN, "CODE:0", buff, aditionalData, 1);
+            }else if(strncasecmp(buff, "DISCONNECT", 10) == 0){
+                char *aditionalData[] = {"E_MTD:SEND"};
+                fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_LEAVE, "CODE:0", buff, aditionalData, 1);
+            }else{
+                char *aditionalData[] = {"E_MTD:SEND"};
+                fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_SEND, "CODE:0", buff, aditionalData, 1);
+            }
             stringify(buff, &sendMsg, &result);
             write(sockfd, buff, sizeof(buff));
-            printf("BUFFER STR: %s\n", buff);
-            printf("....................\n");
         }
     }
     return NULL;
@@ -48,6 +58,7 @@ void* sendChatMessages(void* sockfd_ptr) {
 void *processMessages(void *sockfd_ptr)
 {
     int sockfd = *(int *)sockfd_ptr;
+    char* next_action;
     while (1)
     {
         if (!is_queue_empty(message_queue))
@@ -55,8 +66,18 @@ void *processMessages(void *sockfd_ptr)
             char *message = dequeue(message_queue);
             if (message != NULL)
             {
-                printf(BLUE ">: %s" RESET, message);
-                free(message); // Ensure you free the message after use
+                free_chat_message(&readMsg);
+                initialize_new_msg(&readMsg);
+                int parseResult = parse(message, &readMsg);
+                if (parseResult != 0)
+                {
+                    printf("Error: Invalid message format\n");
+                }
+                else
+                {
+                    printf(BLUE ">: %s" RESET, readMsg.message);
+                    free(message); // Ensure you free the message after use
+                }
             }
         }
 
@@ -75,7 +96,6 @@ void* receiveChatMessages(void* sockfd_ptr) {
         // Read message from server
         if (read(sockfd, recv_buff, sizeof(recv_buff)) > 0) {
             char* message_copy = strdup(recv_buff);  // Duplicate message for safe queue storage
-            printf("COPY %s\n", message_copy);
             enqueue(message_queue, message_copy);  // Enqueue message to be processed
         }
     }
@@ -88,6 +108,7 @@ int main() {
 
     // Create the message queue
     message_queue = create_queue();
+    action_queue = create_queue();
 
     // Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
