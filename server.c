@@ -8,8 +8,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include "utils.h"
+#include <errno.h>
 #include "constants.h"
+#include "app_layer/chat.h"
+#include "utils.h"
 
 struct Client
 {
@@ -21,6 +23,11 @@ struct Client
 
 struct Client available_clients[MAX_CLIENTS]; // Store client connections
 int num_clients = 0;
+
+struct chat_message readMsg;
+struct chat_message sendMsg;
+struct stringify_result result;
+char buffer[CHAT_MSG_MAXSIZE];
 
 /* ASSOCIATED MUTEX FUNCTIONS
  *
@@ -37,19 +44,26 @@ pthread_mutex_t clients_mutex; // Mutex for protecting shared state
  * @param dest_sockfd The socket file descriptor of the destination client.
  */
 
-void send_message(const char *pre_join_text, const char *message, int dest_sockfd)
-{
-    char full_message[MAX_MSG];
-
-    snprintf(full_message, sizeof(full_message), "%s%s", pre_join_text, message);
-
-    write(dest_sockfd, full_message, strlen(full_message));
-}
-
 /**
  * @brief Initializes the available clients array, setting all socket
  * descriptors to -1 and clearing usernames.
  */
+
+char *printMenu()
+{
+    char *output;
+    strcat(output, "===============================================\n");
+    strcat(output, "        Welcome to the Chat Server!            \n");
+    strcat(output, "===============================================\n");
+    strcat(output, "Use the following commands to interact:\n\n");
+    strcat(output, "LIST USERS           - List all available users.\n");
+    strcat(output, "CONNECT <user_id>    - Connect to a user for chat.\n");
+    strcat(output, "DISCONNECT           - Disconnect from the chat.\n");
+    strcat(output, "MENU                 - Display menu.\n");
+    strcat(output, "===============================================\n");
+    return output;
+}
+
 void initialize_clients()
 {
     for (int i = 0; i < MAX_CLIENTS; i++)
@@ -63,80 +77,101 @@ void initialize_clients()
 
 void initialize_clients();
 
-/**
- * @brief Sends a list of available users to the specified client.
- *
- * @param sockfd The socket file descriptor of the client.
- */
-void list_users(int sockfd)
+void send_message(int sockfd, char *version, char *action, char *code, char *message, char *aditionalData[], int aditionalDataCount)
 {
+    bzero(buffer, sizeof(buffer));
 
-    pthread_mutex_lock(&clients_mutex); // Lock the mutex
+    initialize_new_msg(&sendMsg);
+    fill_chat_message(&sendMsg, version, action, code, message, aditionalData, aditionalDataCount);
+    stringify(buffer, &sendMsg, &result);
+    write(sockfd, buffer, strlen(buffer));
 
-    char user_list[MAX_MSG] = "Available users:\n";
-    for (int i = 0; i < MAX_CLIENTS; i++)
-    {
-        char buffer[20];
-        if (available_clients[i].sockfd != -1 && available_clients[i].paired == -1 && available_clients[i].sockfd != sockfd)
-        {
-            sprintf(buffer, "User %d: %s\n", i + 1, available_clients[i].username);
-            strcat(user_list, buffer);
-        }
-    }
-
-    pthread_mutex_unlock(&clients_mutex); // Unlock the mutex
-    write(sockfd, user_list, strlen(user_list));
+    free_chat_message(&sendMsg);
+    bzero(buffer, sizeof(buffer));
 }
 
-/**
- * @brief Assigns a username to the client connected at the specified
- * socket file descriptor. Prompts the user until a valid username
- * is entered.
- *
- * @param connfd The socket file descriptor of the client.
- */
-void assign_username(int connfd)
+void assign_username(int connfd, int client_index)
 {
+
     char username[NAME_LENGTH] = {0}; // Buffer to store the username
 
-    while (strlen(available_clients[num_clients - 1].username) == 0)
+    while (strlen(available_clients[client_index].username) == 0)
     {
-        char msg[52];
-        snprintf(msg, sizeof(msg), "Please assign yourself a username (Max 10 chars.)\n");
-        write(connfd, msg, strlen(msg));
 
-        int n = read(connfd, username, sizeof(username) - 1); // Read username from socket
+        char *aditionalData[] = {"E_MTD:SEND"};
+        send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:100", "Please assign yourself a username (Max 10 chars.)", aditionalData, 1);
 
-        if (n > 0)
+        int n = read(connfd, buffer, sizeof(buffer) - 1);
+        printf("-----------------\n");
+        printf("BUFFER: %s\n", buffer);
+        int resultParse = parse(buffer, &readMsg);
+
+        print_chat_message(&readMsg);
+        printf("-----------------\n");
+
+        if (resultParse != -1)
         {
+            // If message to long handle error [add]
+            strcpy(username, readMsg.message);
             username[n - 1] = '\0';
 
             pthread_mutex_lock(&clients_mutex); // Lock before modifying
-            strncpy(available_clients[num_clients - 1].username, username, NAME_LENGTH - 1);
+            strncpy(available_clients[client_index].username, username, NAME_LENGTH - 1);
             pthread_mutex_unlock(&clients_mutex); // Unlock after modifying
+
+            char *aditionalData1[] = {"E_MTD:GET"};
+            send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:100", printMenu(), aditionalData1, 1);
         }
         else
         {
             printf("Error reading username from client %d\n", connfd);
-            break;
+            continue;
         }
+
+        bzero(buffer, sizeof(buffer));
     }
 }
 
-/**
- * @brief Selects a user for chatting by matching the current client
- * with the target client.
- *
- * @param connfd The socket file descriptor of the client requesting to
- * select another user.
- * @param client_index The index of the current client in the available
- * clients array.
- * @param target_client The index of the target client to chat with.
- */
+void list_users(int connfd)
+{
+    static char user_list[MAX_MSG];
+    memset(user_list, 0, sizeof(user_list));
+
+    pthread_mutex_lock(&clients_mutex);
+
+    snprintf(user_list, MAX_MSG, "Available users:\n");
+
+    int user_count = 0;
+
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (available_clients[i].sockfd != -1 &&
+            available_clients[i].paired == -1 &&
+            available_clients[i].sockfd != connfd)
+        {
+            char buffer[30];
+            snprintf(buffer, sizeof(buffer), "- User %d: %s", i + 1, available_clients[i].username);
+            strncat(user_list, buffer, sizeof(user_list) - strlen(user_list) - 1);
+            user_count++;
+        }
+    }
+
+    if (user_count == 0)
+    {
+        strncat(user_list, "No users available\n", sizeof(user_list) - strlen(user_list) - 1);
+    }
+
+    pthread_mutex_unlock(&clients_mutex); // Unlock the mutex
+
+    char msg[] = "\nConnect using: \n CONNECT <channel>\n";
+    char *aditionalData[] = {"E_MTD:JOIN"};
+    send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:100", strcat(user_list, msg), aditionalData, 1);
+}
 
 void select_user(int connfd, int client_index, int target_client)
 {
     pthread_mutex_lock(&clients_mutex);
+
     if (target_client >= 0 && target_client < MAX_CLIENTS &&
         client_index != target_client &&
         available_clients[target_client].sockfd != -1 &&
@@ -146,36 +181,55 @@ void select_user(int connfd, int client_index, int target_client)
         available_clients[client_index].paired = target_client;
         available_clients[target_client].paired = client_index;
 
+        char *aditionalData[] = {"E_MTD:SEND"};
+
         char msg[50];
         snprintf(msg, sizeof(msg), "You are now chatting with User %s\n", available_clients[target_client].username);
-        write(available_clients[client_index].sockfd, msg, strlen(msg));
+        send_message(available_clients[client_index].sockfd, "1.0", CHAT_ACTION_SEND, "CODE:100", msg, aditionalData, 1);
 
         snprintf(msg, sizeof(msg), "You are now chatting with %s\n", available_clients[client_index].username);
-        write(available_clients[target_client].sockfd, msg, strlen(msg));
+        send_message(available_clients[target_client].sockfd, "1.0", CHAT_ACTION_SEND, "CODE:100", msg, aditionalData, 1);
 
         available_clients[client_index].is_first_connection = false;
         available_clients[target_client].is_first_connection = false;
     }
     else
     {
-        write(connfd, "Invalid user selected.\n", 23);
+        char *aditionalData[] = {"E_MTD:JOIN"};
+        send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:400", "Invalid user selected.\n", aditionalData, 1);
+        // write(connfd, "Invalid user selected.\n", 23);
     }
     pthread_mutex_unlock(&clients_mutex);
 }
 
-/**
- * @brief The main handler for each client thread. Responsible for
- * managing user interactions, message handling, and user selection.
- *
- * @param connfd_ptr A pointer to the socket file descriptor of the
- * client.
- * @return NULL upon completion.
- */
+void disconnect_user(int connfd, int client_index)
+{
+
+    printf("Client %d disconnected...\n", connfd);
+
+    if (available_clients[client_index].paired != -1)
+    {
+        int paired_client = available_clients[client_index].paired;
+        available_clients[paired_client].paired = -1;
+        available_clients[paired_client].is_first_connection = true;
+
+        char *aditionalData[] = {"E_MTD:JOIN"};
+        send_message(available_clients[paired_client].sockfd, "1.0", CHAT_ACTION_SEND, "CODE:100", "User has left the chat.\n", aditionalData, 1);
+    }
+
+    available_clients[client_index].sockfd = -1;
+    available_clients[client_index].paired = -1;
+    available_clients[client_index].is_first_connection = true;
+
+    num_clients--;
+
+    close(connfd);
+    pthread_exit(NULL);
+}
 
 void *client_handler(void *connfd_ptr)
 {
     int connfd = *((int *)connfd_ptr);
-    char buff[MAX_MSG];
     char command[COMMAND_SIZE];
     int client_index = -1;
 
@@ -191,98 +245,64 @@ void *client_handler(void *connfd_ptr)
     }
     pthread_mutex_unlock(&clients_mutex);
 
-    list_users(connfd);
-    assign_username(connfd);
-
-    char msg[] = "Connect using: \n select <channel>\n";
-    write(connfd, msg, sizeof(msg));
+    assign_username(connfd, client_index);
 
     // Infinite loop for chat
     for (;;)
     {
-        bzero(buff, MAX_MSG);
-        int bytes_read = read(connfd, buff, sizeof(buff));
+        bzero(buffer, CHAT_MSG_MAXSIZE);
+        int bytes_read = read(connfd, buffer, sizeof(buffer));
         if (bytes_read <= 0)
         {
-            printf("Client disconnected...\n");
-            close(connfd);
-            pthread_exit(NULL);
+            disconnect_user(connfd, client_index);
         }
 
-        // Check command
-        extract_command(buff, command, sizeof(command));
+        if (buffer[0] != '\0')
+        {
+            printf("\nReceived message: %s\n", buffer);
 
-        // SELECT USER
-        if (strncmp(command, "select", 6) == 0)
-        {
-            int target_client = atoi(buff + 7) - 1; // Get user number from the message
+            int parseResult = parse(buffer, &readMsg);
 
-            select_user(connfd, client_index, target_client);
-        }
-        // LIST USERS
-        else if (strncmp(command, "list", 4) == 0)
-        {
-            list_users(connfd);
-        }
-        else if (strncmp(command, "exit", 4) == 0)
-        {
-            if (available_clients[client_index].paired != -1)
+            if (parseResult != -1)
             {
-                int target = available_clients[client_index].paired;
-                char msg[50];
-                snprintf(msg, sizeof(msg), "%s has left the chat.\n", available_clients[client_index].username);
-                write(available_clients[target].sockfd, msg, strlen(msg));
+                if (strncasecmp(readMsg.action, CHAT_ACTION_GET, 4) == 0)
+                {
+                    list_users(connfd);
+                }
+                else if (strncasecmp(readMsg.message, CHAT_MSG_CONNECT, 7) == 0)
+                {
+                    int target_client = atoi(readMsg.message + 8) - 1;
+
+                    if (target_client < 0)
+                    {
+                        char *aditionalData[] = {"E_MTD:JOIN"};
+                        send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:400", "Error: Invalid input. Please enter a valid number for the target client.", aditionalData, 1);
+                    }
+                    else
+                    {
+                        select_user(connfd, client_index, target_client);
+                    }
+                }
+                else if (strncasecmp(readMsg.action, CHAT_ACTION_LEAVE, 4) == 0 || strncasecmp(readMsg.message, CHAT_MSG_DISCONNECT, 10) == 0)
+                {
+                    disconnect_user(connfd, client_index);
+                }
+                else if (available_clients[client_index].paired != -1)
+                {
+                    bzero(buffer, CHAT_MSG_MAXSIZE);
+                    stringify(buffer, &readMsg, &result);
+                    write(available_clients[available_clients[client_index].paired].sockfd, buffer, strlen(buffer));
+                }
             }
-
-            pthread_mutex_lock(&clients_mutex);
-            available_clients[client_index].paired = -1;
-            close(available_clients[client_index].sockfd);
-            pthread_mutex_unlock(&clients_mutex);
-            printf("Client %s disconnected...\n", available_clients[client_index].username);
-            pthread_exit(NULL);
-        }
-        // MSG TO PAIRED USER
-        else if (available_clients[client_index].paired != -1)
-        {
-
-            char message[MAX_MSG];
-
-            snprintf(message, sizeof(message), "Message from %s: %.*s",
-                     available_clients[client_index].username,
-                     (int)(MAX_MSG - (14 + strlen(available_clients[client_index].username))),
-                     buff);
-
-            int target = available_clients[client_index].paired;
-            write(available_clients[target].sockfd, message, strlen(message));
-        }
-        // DESIRED ALREADY PAIRED
-        else if (available_clients[client_index].paired == -1)
-        {
-            if (!available_clients[client_index].is_first_connection)
+            else
             {
-                char msg[] = "User busy\n";
-                write(connfd, msg, sizeof(msg));
+                send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:400", "Error: Invalid message format", NULL, 0);
             }
-        }
-        else if (strncmp(command, "exit", 4))
-        {
-        }
-        else
-        {
-            write(connfd, "Please select a user to chat with using 'select <user_number>'\n", 67);
         }
     }
 
     return NULL;
 }
-
-/**
- * @brief The main function of the server. Sets up the server socket,
- * listens for incoming connections, and creates a new thread for each
- * connected client.
- *
- * @return 0 on successful execution.
- */
 
 int main()
 {
@@ -291,7 +311,7 @@ int main()
 
     // Initialize mutex
     pthread_mutex_init(&clients_mutex, NULL);
-    initialize_clients(); // Initialize available clients
+    initialize_clients();
 
     // Socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -348,10 +368,31 @@ int main()
         if (num_clients < MAX_CLIENTS)
         {
             pthread_mutex_lock(&clients_mutex);
-            available_clients[num_clients].sockfd = connfd;
-            num_clients++;
+
+            bool client_sucessfully_added = false;
+
+            //Save new client
+            for (int i = 0; i < MAX_CLIENTS; i++)
+            {
+                if (available_clients[i].sockfd == -1)
+                {
+                    available_clients[i].sockfd = connfd;
+                    num_clients++;
+                    client_sucessfully_added = true;
+                    break;
+                }
+            }
+
+            if (!client_sucessfully_added)
+            {
+                printf("Error: Could not add client to available_clients\n");
+            }
+            else
+            {
+                printf("Client connected to channel: %d\n", connfd);
+            }
+
             pthread_mutex_unlock(&clients_mutex);
-            printf("Client connected to channel: %d\n", connfd);
 
             pthread_t client_thread;
             pthread_create(&client_thread, NULL, client_handler, &connfd);
@@ -359,7 +400,8 @@ int main()
         }
         else
         {
-            printf("Max clients reached, rejecting client...\n");
+            char *aditionalData[] = { "E_MTD:SEND" };
+            send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:0", "Max clients reached, rejecting client...\n", aditionalData, 1);
             close(connfd);
         }
     }
