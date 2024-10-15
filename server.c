@@ -29,7 +29,7 @@ struct chat_message sendMsg;
 struct stringify_result result;
 char buffer[CHAT_MSG_MAXSIZE];
 
-pthread_mutex_t clients_mutex; // Mutex for protecting shared state
+pthread_mutex_t clients_mutex; 
 
 void initialize_clients()
 {

@@ -8,9 +8,9 @@
 void clear_console(int connfd);
 
 // Function to extract key from KEY:VALUE string
-char* getStringKey(const char *string);
+char* get_string_key(const char *string);
 
 // Function to extract value from KEY:VALUE string
-char* getStringValue(char *string);
+char* get_string_value(char *string);
 
 #endif // UTILS_H

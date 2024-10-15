@@ -2,14 +2,12 @@
 #include <string.h>
 #include "queue.h"
 
-// Function to create a queue
 queue_t* create_queue() {
     queue_t *q = (queue_t*)malloc(sizeof(queue_t));
     q->front = q->rear = NULL;
     return q;
 }
 
-// Function to enqueue a message to the queue
 void enqueue(queue_t *q, char *msg) {
     node_t *new_node = (node_t*)malloc(sizeof(node_t));
     new_node->data = strdup(msg); // Duplicate the message
@@ -22,7 +20,6 @@ void enqueue(queue_t *q, char *msg) {
     }
 }
 
-// Function to dequeue a message from the queue
 char* dequeue(queue_t *q) {
     if (q->front == NULL) {
         return NULL;
@@ -37,7 +34,6 @@ char* dequeue(queue_t *q) {
     return msg;
 }
 
-// Check if the queue is empty
 int is_queue_empty(queue_t *q) {
     return q->front == NULL;
 }

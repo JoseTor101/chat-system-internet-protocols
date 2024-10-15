@@ -12,12 +12,11 @@ struct Client {
     bool is_first_connection;   // Flag for the first connection
 };
 
-extern struct Client available_clients[MAX_CLIENTS]; // Array of available clients
-extern int num_clients; // Current number of connected clients
+extern struct Client available_clients[MAX_CLIENTS]; 
+extern int num_clients; 
 
-extern pthread_mutex_t clients_mutex; // Mutex for protecting shared state
+extern pthread_mutex_t clients_mutex;
 
-// Function declarations
 void print_menu(int connfd);
 void send_message(const char *pre_join_text, const char *message, int dest_sockfd);
 void initialize_clients();

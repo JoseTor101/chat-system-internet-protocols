@@ -71,8 +71,6 @@ void stringify(
     struct chat_message *msg,
     struct stringify_result *result)
 {
-
-    //char *buffer = (char *)malloc(CHAT_MSG_MAXSIZE * sizeof(char));
     stringify_result_factory(result);
     current_buffer_pos = 0;
 
@@ -113,7 +111,6 @@ void stringify(
         free(buffer);
         printf("Error: Action is empty\n");
         return;
-        //return NULL;
     }
 
     // Append status code
@@ -155,7 +152,6 @@ void stringify(
 
     buffer[current_buffer_pos] = '\0';
 
-    //return buffer;
     return;
 }
 
@@ -208,15 +204,9 @@ int parse(char buffer[], struct chat_message *msg)
     
     if (*ptr != '\0')
     {
-        //printf("ptr: %s\n", ptr);
-        //if (msg->num_additionalData >= MAX_ADDITIONAL_DATA)
-        //    return -1;
         
-        //MSG:\r\n<message>
         msg->message = strdup(ptr+6);
         msg->message_length = strlen(msg->message);
-        //msg->additionalData[msg->num_additionalData] = strdup(ptr);
-        //msg->num_additionalData++;
     }
 
     return 0;
@@ -318,45 +308,3 @@ void free_chat_message(struct chat_message *msg)
     msg->status = NULL;
     msg->message = NULL;
 }
-
-char *readMessage(char *buffer, int client_index)
-{
-    struct chat_message *newMsg;
-
-    initialize_new_msg(newMsg);
-
-    struct stringify_result result;
-    int parseResult = parse(buffer, newMsg);
-
-    if (parseResult != 0)
-    {
-        free_chat_message(newMsg); // Free allocated resources
-        return "Error: Invalid message format";
-    }
-
-    if (strcmp(newMsg->action, CHAT_ACTION_GET) == 0)
-    {
-        // e.g. "MCP/1.0/GET/CODE:0/E_MTD:SEND/RESOURCE:LIST"
-        if (strcmp(getStringValue(newMsg->additionalData[1]), "JOIN") == 0)
-        {
-            newMsg->action = CHAT_ACTION_SEND;
-            newMsg->status = CHAT_SEND_SUCCESS;
-            newMsg->num_additionalData = 1;
-            newMsg->additionalData[0] = strdup("E_MTD:SEND");
-            //newMsg->message = list_users(client_index);
-            //return stringify(newMsg, &result);
-        }else if (strcmp(getStringValue(newMsg->additionalData[1]), "LIST") == 0)
-        {
-            newMsg->action = CHAT_ACTION_SEND;
-            newMsg->status = CHAT_SEND_SUCCESS;
-            newMsg->num_additionalData = 1;
-            newMsg->additionalData[0] = strdup("E_MTD:SEND"); // Duplicate the string
-            //newMsg->message = list_users(client_index);
-            //return stringify(newMsg, &result);
-        }
-    }
-
-    free_chat_message(newMsg); // Clean up
-    return "Error: Unsupported action";
-}
-

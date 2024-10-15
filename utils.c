@@ -6,12 +6,12 @@
 
 // Function to clear console for the client
 void clear_console(int connfd) {
-    const char *clear_console_msg = "\033[H\033[J"; // ANSI escape code for clearing console
-    write(connfd, clear_console_msg, strlen(clear_console_msg)); // Send to client
+    const char *clear_console_msg = "\033[H\033[J"; 
+    write(connfd, clear_console_msg, strlen(clear_console_msg));
 }
 
 // KEY:VALUE -> KEY
-char* getStringKey(const char *string) {
+char* get_string_key(const char *string) {
     if (!string) return NULL;
     char *colon_pos = strchr(string, ':');
     if (!colon_pos) return NULL;
@@ -30,7 +30,7 @@ char* getStringKey(const char *string) {
 }
 
 // KEY:VALUE -> VALUE   
-char* getStringValue(char *string) {
+char* get_string_value(char *string) {
     if (!string) return NULL;
     char *colon_pos = strchr(string, ':');
     if (!colon_pos) return NULL;
