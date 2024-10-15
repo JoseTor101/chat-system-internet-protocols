@@ -26,7 +26,7 @@ queue_t* message_queue;  // Pointer to the message queue
 queue_t* action_queue; // Pointer to the protocol queue
 
 // Function to send chat messages from input
-void* sendChatMessages(void* sockfd_ptr) {
+void* send_chat_messages(void* sockfd_ptr) {
     int sockfd = *(int*) sockfd_ptr;
     while (1) {
         bzero(buff, sizeof(buff));
@@ -55,9 +55,8 @@ void* sendChatMessages(void* sockfd_ptr) {
 }
 
 // Function to process received chat messages from the queue
-void *processMessages(void *sockfd_ptr)
+void *process_messages()
 {
-    int sockfd = *(int *)sockfd_ptr;
     char* next_action;
     while (1)
     {
@@ -87,7 +86,7 @@ void *processMessages(void *sockfd_ptr)
 }
 
 // Function to receive chat messages and enqueue them
-void* receiveChatMessages(void* sockfd_ptr) {
+void* receive_chat_messages(void* sockfd_ptr) {
     int sockfd = *(int*) sockfd_ptr;
     char recv_buff[CHAT_MSG_MAXSIZE];
 
@@ -138,9 +137,9 @@ int main() {
     // Create threads for receiving and processing messages
     pthread_t recv_thread, send_thread, process_thread;
 
-    pthread_create(&recv_thread, NULL, receiveChatMessages, &sockfd);
-    pthread_create(&process_thread, NULL, processMessages, &sockfd);
-    pthread_create(&send_thread, NULL, sendChatMessages, &sockfd);
+    pthread_create(&recv_thread, NULL, receive_chat_messages, &sockfd);
+    pthread_create(&process_thread, NULL, process_messages, &sockfd);
+    pthread_create(&send_thread, NULL, send_chat_messages, &sockfd);
 
     // Join threads (wait for them to finish)
     pthread_join(recv_thread, NULL);

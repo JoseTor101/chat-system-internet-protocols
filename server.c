@@ -83,7 +83,7 @@ void send_message(int sockfd, char *version, char *action, char *code, char *mes
     bzero(buffer, sizeof(buffer));
 }
 
-void printMenu(int connfd)
+void print_menu(int connfd)
 {
     static char output[400];
     strcat(output, "===============================================\n");
@@ -126,7 +126,7 @@ void assign_username(int connfd, int client_index)
             strncpy(available_clients[client_index].username, username, NAME_LENGTH - 1);
             pthread_mutex_unlock(&clients_mutex); // Unlock after modifying
 
-            printMenu(connfd);
+            print_menu(connfd);
         }
         else
         {
@@ -286,7 +286,7 @@ void *client_handler(void *connfd_ptr)
                     if (strncasecmp(readMsg.message, "MENU", 4) == 0)
                     {
                         printf("Menu requested\n");
-                        printMenu(connfd);
+                        print_menu(connfd);
                         printf("Menu sent\n");
                     }
                 }
