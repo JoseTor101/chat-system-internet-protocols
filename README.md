@@ -378,10 +378,6 @@ Responsible for receiving chat messages from a server and storing them in a queu
 
 # Achievements and difficulties
 
-
-
-El proyecto logró apagar el poquito amor que me quedaba por la educación. Puede algo muy básico a nivel de telecomunicación pero la cantidad de errores que encontramos no lo hicieron fácil. Empezando por los errores de manejo de memoria en C, apuntadores y SEGMENTATION FAULT, se hizo muy dificil trabajar la programación a un nivel tan bajo. La construcción del protocolo desde cero implicaba pensar a futuro como queriamos que crecieran las funcionalidades, y como lo planeamos bien al principio esto cambió muchas veces. Hay muchísimas funcionalidades que quedaron sin implementar porque el tiempo era limitado, tardabamos más corrigiendo errores que haciendo funcionalidades.
-
 The project managed to extinguish the little love we had left for education. It was something very basic at the telecommunications level, but the number of errors we encountered made it difficult. Starting with memory management errors in C, pointers, and SEGMENTATION FAULT, it became very challenging to work with programming at such a low level. Building the protocol from scratch meant thinking ahead about how we wanted the functionalities to grow, and since we didn't plan this well from the beginning, it changed many times. There are many functionalities we had in mind that were left unimplemented because time was limited; we spent more time fixing errors than creating functionalities.
 
 
