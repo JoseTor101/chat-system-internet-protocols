@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include "../constants.h"
 
 typedef char *chat_action;
 typedef char *action_status;
@@ -26,9 +27,6 @@ typedef char *action_status;
 
 #define CHAT_SEND_SUCCESS "OK_S"
 #define CHAT_SEND_FAIL "ERROR_4"
-
-#define CHAT_MSG_MAXSIZE 1024
-#define MAX_ADDITIONAL_DATA 10
 
 struct chat_message
 {

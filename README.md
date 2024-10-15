@@ -425,7 +425,7 @@ gcc -g -o server server.c app_layer/chat.c utils.c -lpthread
 **Compile client**
 
  ```bash
- gcc -g -o client client.c app_layer/chat.c utils.c queue.h -lpthread
+ gcc -g -o client client.c app_layer/chat.c utils.c constants.h queue.c -lpthread
  ```
  
  **Execute client**

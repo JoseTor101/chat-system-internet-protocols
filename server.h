@@ -5,7 +5,8 @@
 #include <pthread.h>
 #include "constants.h"
 
-struct Client {
+struct Client
+{
     int sockfd;                // Socket file descriptor
     char username[NAME_LENGTH]; // Username of the client
     int paired;                // Paired client ID, -1 if not paired

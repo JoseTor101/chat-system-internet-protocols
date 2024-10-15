@@ -3,10 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 #include "utils.h"
-
+#include "constants.h"
 // Function to clear console for the client
 void clear_console(int connfd) {
-    const char *clear_console_msg = "\033[H\033[J"; 
+    const char *clear_console_msg = CLEAR_CONSOLE; 
     write(connfd, clear_console_msg, strlen(clear_console_msg));
 }
 
