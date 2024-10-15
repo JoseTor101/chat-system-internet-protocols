@@ -18,9 +18,10 @@ extern int num_clients; // Current number of connected clients
 extern pthread_mutex_t clients_mutex; // Mutex for protecting shared state
 
 // Function declarations
+void printMenu(int connfd);
 void send_message(const char *pre_join_text, const char *message, int dest_sockfd);
 void initialize_clients();
-char *list_users(int sockfd);
+void list_users(int connfd);
 void assign_username(int connfd);
 void select_user(int connfd, int client_index, int target_client);
 void *client_handler(void *connfd_ptr);

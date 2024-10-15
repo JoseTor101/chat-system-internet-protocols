@@ -34,7 +34,7 @@ void* sendChatMessages(void* sockfd_ptr) {
 
         if (strlen(buff) > 1) {
             initialize_new_msg(&sendMsg);
-            if(strncasecmp(buff, "LIST", 4) == 0){
+            if(strncasecmp(buff, "LIST", 4) == 0 || strncasecmp(buff, "MENU", 4) == 0){
                 char *aditionalData[] = {"E_MTD:SEND"};
                 fill_chat_message(&sendMsg, "1.0", CHAT_ACTION_GET, "CODE:0", buff, aditionalData, 1);
             }else if(strncasecmp(buff, "CONNECT", 7) == 0){
