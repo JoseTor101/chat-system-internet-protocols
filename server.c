@@ -13,13 +13,13 @@
 #include "app_layer/chat.h"
 #include "utils.h"
 
-struct Client
-{
-    int sockfd; // -1 default, Socket file descriptor
-    char username[NAME_LENGTH];
-    int paired; // -1 if not paired, else number ID of paired client
-    bool is_first_connection;
+struct Client {
+    int sockfd;                // Socket file descriptor
+    char username[NAME_LENGTH]; // Username of the client
+    int paired;                // Paired client ID, -1 if not paired
+    bool is_first_connection;   // Flag for the first connection
 };
+
 
 struct Client available_clients[MAX_CLIENTS]; // Store client connections
 int num_clients = 0;
@@ -70,11 +70,11 @@ void print_menu(int connfd)
     strcat(output, "===============================================\n");
     strcat(output, "        Welcome to the Chat Server!            \n");
     strcat(output, "===============================================\n");
-    strcat(output, "Use the following commands to interact:\n\n");
-    strcat(output, "LIST USERS           - List all available users.\n");
-    strcat(output, "CONNECT <user_id>    - Connect to a user for chat.\n");
-    strcat(output, "DISCONNECT           - Disconnect from the chat.\n");
-    strcat(output, "MENU                 - Display menu.\n");
+     strcat(output, "Use the following commands to interact:\n\n");
+    strcat(output, "LIST\t\t\t- List all available users.\n");
+    strcat(output, "CONNECT <user_id>\t- Connect to a user for chat.\n");
+    strcat(output, "DISCONNECT\t\t- Disconnect from the chat.\n");
+    strcat(output, "MENU\t\t\t- Display menu.\n");
     strcat(output, "===============================================\n");
 
     char *aditionalData[] = {"E_MTD:SEND"};
@@ -121,12 +121,12 @@ void assign_username(int connfd, int client_index)
 
 void list_users(int connfd)
 {
-    static char user_list[MAX_MSG];
+    static char user_list[80];
     memset(user_list, 0, sizeof(user_list));
 
     pthread_mutex_lock(&clients_mutex);
 
-    snprintf(user_list, MAX_MSG, "Available users:\n");
+    snprintf(user_list, 80, "Available users:\n");
 
     int user_count = 0;
 

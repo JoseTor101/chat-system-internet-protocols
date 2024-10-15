@@ -2,10 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "chat.h"
-#include "../server.h"
 #include <string.h>
-#include "../utils.h"
+#include "chat.h"
 
 const char *ActionOptions[] = {
     CHAT_ACTION_JOIN,

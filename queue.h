@@ -11,11 +11,8 @@ typedef struct {
 } queue_t;
 
 queue_t* create_queue();
-
 void enqueue(queue_t *q, char *msg);
-
 char* dequeue(queue_t *q);
-
 int is_queue_empty(queue_t *q);
 
 #endif // QUEUE_H
