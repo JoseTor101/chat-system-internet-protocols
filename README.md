@@ -10,6 +10,7 @@
 
 - [Introduction](#Introduction)
 - [Development](#Development)
+- [Man pages](#man-pages)
 - [Achievements and difficulties](#Achievements-and-difficulties)
 - [Conclusions](#Conclusions)
 - [References](#References)
@@ -136,6 +137,7 @@ Our message is build with the following structure:
 - [initialize_new_msg](#initialize_new_msg)
 - [fill_chat_message](#fill_chat_message)
 - [print_chat_message](#print_chat_message)
+- [free_chat_message](#free_chat_message)
 
 ### [server.c](#serverc)
 - [initialize_clients](#initialize_clients)
@@ -153,12 +155,24 @@ Our message is build with the following structure:
 - [process_messages](#process_messages)
 - [receive_chat_messages](#receive_chat_messages)
 
-### 
+### [utils.c](#utilsc)
+- [clear_console](#clear_console)
+- [get_string_key](#get_string_key)
+- [get_string_value](#get_string_value)
 
+### [queue.c](#queuec)
+- [create_queue](#create_queue)
+- [enqueue](#enqueue)
+- [dequeue](#dequeue)
+- [is_queue_empty](#is_queue_empty)
+  
 ## Chat.c:
 
 ## `buffer_write_header`
 
+`
+void buffer_write_header(int isAction, char buffer[], struct chat_message *msg, const char *methodStatus[], struct stringify_result *result)
+`
 ### Description
 Writes the header information into a buffer based on the action or status of a chat message.
 
@@ -172,7 +186,9 @@ Writes the header information into a buffer based on the action or status of a c
 ---
 
 ## `stringify_result_factory`
-
+`
+void stringify_result_factory(struct stringify_result *result)
+`
 ### Description
 Initializes a `stringify_result` structure by setting the default length and reply values.
 
@@ -182,7 +198,9 @@ Initializes a `stringify_result` structure by setting the default length and rep
 ---
 
 ## `stringify`
-
+`
+void stringify(char *buffer, struct chat_message *msg, struct stringify_result *result)
+`
 ### Description
 Generates a string representation of the `chat_message` and writes it into a buffer.
 
@@ -194,7 +212,9 @@ Generates a string representation of the `chat_message` and writes it into a buf
 ---
 
 ## `parse`
-
+`
+int parse(char buffer[], struct chat_message *msg)
+`
 ### Description
 Parses a buffer string and fills the fields of a `chat_message` structure.
 
@@ -210,6 +230,9 @@ Parses a buffer string and fills the fields of a `chat_message` structure.
 
 ## `initialize_new_msg`
 
+`
+void initialize_new_msg(struct chat_message *newMsg)
+`
 ### Description
 Initializes a new `chat_message` structure and allocates memory for its fields.
 
@@ -219,6 +242,9 @@ Initializes a new `chat_message` structure and allocates memory for its fields.
 ---
 
 ## `fill_chat_message`
+`
+void fill_chat_message( struct chat_message *msg, char *protocolVersion, char *action, char *status, char *message, char *additionalData[], int num_additionalData) 
+`
 
 ### Description
 Fills a `chat_message` structure with the provided information.
@@ -235,6 +261,9 @@ Fills a `chat_message` structure with the provided information.
 ---
 
 ## `print_chat_message`
+`
+void print_chat_message(struct chat_message *msg)
+`
 
 ### Description
 Prints the content of a `chat_message` structure to the console.
@@ -242,9 +271,25 @@ Prints the content of a `chat_message` structure to the console.
 ### Parameters
 - `msg`: A pointer to the `chat_message` structure to be printed.
 
+## `free_chat_message`
+`
+void free_chat_message(struct chat_message *msg
+`
+
+### Description
+Frees the dynamically allocated memory used by a `chat_message` structure, including its fields and any additional data. After freeing, it sets the relevant pointers to `NULL` to avoid dangling references.
+
+### Parameters
+- `msg`:  
+  A pointer to a `struct chat_message` that contains the data to be freed.
+
+
 ## Server.c
 
 ## `initialize_clients`
+`
+void initialize_clients()
+`
 
 ## Description
 Initializes the available clients for connection handling in the application.
@@ -259,6 +304,9 @@ The function performs the following tasks for each client in the `available_clie
 - None.
 
 ## `debug_message`
+`
+void debug_message(char *buffer, struct chat_message *msg)
+`
 
 ## Description
 Prints a debug message to the console, including the contents of a buffer and a `chat_message` structure. It outputs a separator, the buffer's content, the details of the `chat_message`, and concludes with another separator line for clarity.
@@ -268,6 +316,9 @@ Prints a debug message to the console, including the contents of a buffer and a 
 - `msg`: A pointer to the `chat_message` structure to be printed for debugging.
 
 ## `send_message`
+`
+void send_message(int sockfd, char *version, char *action, char *code, char *message, char *aditionalData[], int aditionalDataCount)
+` 
 
 ## Description
 Sends a formatted message over a socket connection. This function initializes a new message, fills it with the provided parameters, converts it to a string, and writes it to the specified socket. It also handles memory management by freeing allocated resources after sending the message.
@@ -282,6 +333,9 @@ Sends a formatted message over a socket connection. This function initializes a 
 - `aditionalDataCount`: An integer indicating the number of additional data items in the `aditionalData` array.
 
 ## `printMenu`
+`
+void print_menu(int connfd)
+`
 
 ## Description
 Constructs and sends a formatted menu for the chat server to the specified connection. This function builds a static string containing the menu options and then uses the `send_message` function to send this menu to the connected client.
@@ -292,6 +346,9 @@ Constructs and sends a formatted menu for the chat server to the specified conne
 
 ## `assign_username`
 
+`
+void assign_username(int connfd, int client_index)
+`
 ## Description
 Prompts the connected client to assign a username for their session. The function continuously sends a request for a username until a valid input is received. Once a valid username is provided, it updates the corresponding client’s username in the `available_clients` array.
 
@@ -300,7 +357,9 @@ Prompts the connected client to assign a username for their session. The functio
 - `client_index`: An integer representing the index of the client in the `available_clients` array.
 
 ## `list_users`
-
+`
+void list_users(int connfd)
+`
 ## Description
 Retrieves and sends a list of available users to the connected client. The function checks for clients that are not paired and sends their usernames. If no users are available, it informs the client accordingly.
 
@@ -308,7 +367,9 @@ Retrieves and sends a list of available users to the connected client. The funct
 - `connfd`: An integer representing the socket file descriptor for the client connection.
 
 ## `select_user`
-
+`
+void select_user(int connfd, int client_index, int target_client)
+`
 ## Description
 Establishes a chat connection between two clients. The function pairs the current client with the target client, allowing them to communicate. If the target client is invalid or already paired, an error message is sent to the current client.
 
@@ -318,6 +379,9 @@ Establishes a chat connection between two clients. The function pairs the curren
 - `target_client`: An integer representing the index of the target client to connect with.
 
 ## `disconnect_user`
+`
+void disconnect_user(int connfd, int client_index, void *connfd_ptr)
+`
 
 ## Description
 Disconnects a user from the chat server. This function updates the state of the user being disconnected and notifies the paired user that the other user has left the chat. It also cleans up the user’s data and decreases the client count.
@@ -328,7 +392,9 @@ Disconnects a user from the chat server. This function updates the state of the 
 - `connfd_ptr`: A pointer to the connection file descriptor, used to exit the thread safely.
 
 ## `client_handler`
-
+`
+void *client_handler(void *connfd_ptr)
+`
 ## Description
 Basically the server core, handles client interactions in the chat server. This function runs in a separate thread for each client, managing user commands and messages. It allows clients to assign usernames, connect with other users, send messages, and disconnect gracefully.
 
@@ -338,14 +404,15 @@ Basically the server core, handles client interactions in the chat server. This 
 
 ## Client.c
 ## `send_chat_messages`
+
+`
+void* send_chat_messages(void* sockfd_ptr)
+` 
 ### Description
 Reads user input from the console, builds a chat message with appropriate headers and message actions, and sends it through the socket. 
 
-
-
 - Clear `buff` using `bzero()` and read input with `fgets()`.
-
- - If input starts with "LIST", "MENU", "DISCONNECT", or "CONNECT", pick the respective option and pass it to `fill_chat_message()`.
+- If input starts with "LIST", "MENU", "DISCONNECT", or "CONNECT", pick the respective option and pass it to `fill_chat_message()`.
 - Fill message with `fill_chat_message()`, then use `stringify()` and `write()` to send.
 
 ### Parameters
@@ -353,21 +420,24 @@ Reads user input from the console, builds a chat message with appropriate header
 - **`sockfd_ptr`**: A pointer to the socket file descriptor that will be cast to an integer (`sockfd`).
 
 ## `process_messages`
+
+`
+void *process_messages()
+`
 ### Description
 
 Handle incoming messages from a queue, process them, and display the message content.
 
 - The function runs in an infinite loop (`while (1)`), continuously checking for messages in a queue.
-
-
-  
 - It checks if there are any messages in the `message_queue` using `is_queue_empty(message_queue)`.
 - If a message is found, the function attempts to parse the message using `parse(message, &readMsg)`.
 - Prints the parsed message content using `printf()` with a specific format (in this case, the message is displayed in blue).
-
 - Frees the allocated memory for the message using `free(message)`.
 
 ## `receive_chat_messages`
+`
+void* receive_chat_messages(void* sockfd_ptr) 
+`
 ### Description
 
 Responsible for receiving chat messages from a server and storing them in a queue for further processing.
@@ -376,11 +446,95 @@ Responsible for receiving chat messages from a server and storing them in a queu
 - Use `read()` to read data from the server socket into `recv_buff`.
 - If a message is successfully read, duplicate the message using `strdup()` to create a safe copy and add it to`message_queue` using `enqueue()`.
 
+## Utils.c
+
+## `clear_console`
+`
+void clear_console(int connfd)
+`
+### Description
+Sends an ANSI escape sequence to the client to clear the console screen. The function writes the sequence through a socket connection.
+
+### Parameters
+- `connfd`: A file descriptor for the client's socket connection, used to send the ANSI escape sequence to the client.
+
+## `get_string_key`
+`
+char* get_tring_key(const char *string)
+`
+### Description
+Extracts the key from a `KEY:VALUE` formatted string. The function identifies the position of the colon (`:`) and returns the part before the colon as the key. Memory is dynamically allocated for the key, and the caller is responsible for freeing it.
+
+### Parameters
+- `string`:  
+  A pointer to a null-terminated string in the `KEY:VALUE` format. The function extracts and returns the part before the colon as the key. If the string is `NULL` or does not contain a colon, the function returns `NULL`.
+
+
+## `get_string_value`
+`
+char* get_string_value(char *string)
+`
+### Description
+Extracts the value from a `KEY:VALUE` formatted string. The function finds the position of the colon (`:`) and returns a newly allocated string containing the part after the colon.
+
+### Parameters
+- `string`:  
+  A pointer to a null-terminated string in the `KEY:VALUE` format. The function extracts and returns the part after the colon as the value. If the string is `NULL` or does not contain a colon, the function returns `NULL`.
+
+## Queue.c
+## `create_queue`
+`
+queue_t* create_queue()
+`
+### Description
+Initializes and returns a pointer to a new, empty queue. The queue's front and rear pointers are initialized to `NULL`.
+
+### Parameters
+None.
+
+## `enqueue`
+`
+void enqueue(queue_t *q, char *msg)
+`
+### Description
+Adds a message to the end of the queue. If the queue is empty, the new node becomes both the front and rear of the queue. The message is duplicated before being added.
+
+### Parameters
+- `q`:  
+  A pointer to a `queue_t` structure representing the queue.
+  
+- `msg`:  
+  A pointer to a null-terminated string containing the message to be enqueued. The message is duplicated and stored in the new node.
+
+## `dequeue`
+`
+char* dequeue(queue_t *q)
+`
+### Description
+Removes and returns the message from the front of the queue. If the queue becomes empty after dequeuing, both the front and rear pointers are set to `NULL`. The message is returned, but the caller is responsible for freeing the memory allocated for the message.
+
+### Parameters
+- `q`:  
+  A pointer to a `queue_t` structure representing the queue.
+
+## `is_queue_empty`
+`
+int is_queue_empty(queue_t *q) 
+`
+### Description
+Checks whether the queue is empty by examining if the front pointer is `NULL`.
+
+### Parameters
+- `q`:  
+  A pointer to a `queue_t` structure representing the queue.
+
+### Return Value
+- Returns `1` if the queue is empty (i.e., the front pointer is `NULL`), otherwise returns `0`.
+
+
 # Achievements and difficulties
 
 The project managed to extinguish the little love we had left for education. It was something very basic at the telecommunications level, but the number of errors we encountered made it difficult. Starting with memory management errors in C, pointers, and SEGMENTATION FAULT, it became very challenging to work with programming at such a low level. Building the protocol from scratch meant thinking ahead about how we wanted the functionalities to grow, and since we didn't plan this well from the beginning, it changed many times. There are many functionalities we had in mind that were left unimplemented because time was limited; we spent more time fixing errors than creating functionalities.
-
-
 
 <img 
 height="200px"     src="https://media1.tenor.com/m/MArtmCi0hlMAAAAC/computer-science-c-code.gif">
@@ -431,6 +585,5 @@ gcc -g -o server server.c app_layer/chat.c utils.c -lpthread
  **Execute client**
  
  ```./client```
- 
  
 > [Go back to contents](#MY-CHAT-PROTOCOL)
