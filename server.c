@@ -49,20 +49,6 @@ pthread_mutex_t clients_mutex; // Mutex for protecting shared state
  * descriptors to -1 and clearing usernames.
  */
 
-char *printMenu()
-{
-    char *output;
-    strcat(output, "===============================================\n");
-    strcat(output, "        Welcome to the Chat Server!            \n");
-    strcat(output, "===============================================\n");
-    strcat(output, "Use the following commands to interact:\n\n");
-    strcat(output, "LIST USERS           - List all available users.\n");
-    strcat(output, "CONNECT <user_id>    - Connect to a user for chat.\n");
-    strcat(output, "DISCONNECT           - Disconnect from the chat.\n");
-    strcat(output, "MENU                 - Display menu.\n");
-    strcat(output, "===============================================\n");
-    return output;
-}
 
 void initialize_clients()
 {
@@ -75,7 +61,14 @@ void initialize_clients()
     }
 }
 
-void initialize_clients();
+void debug_message(char *buffer, struct chat_message *msg)
+{
+    printf("-----------------\n");
+    printf("BUFFER: %s\n", buffer);
+    print_chat_message(msg);
+    printf("-----------------\n");
+
+}
 
 void send_message(int sockfd, char *version, char *action, char *code, char *message, char *aditionalData[], int aditionalDataCount)
 {
@@ -90,6 +83,23 @@ void send_message(int sockfd, char *version, char *action, char *code, char *mes
     bzero(buffer, sizeof(buffer));
 }
 
+void printMenu(int connfd)
+{
+    static char output[400];
+    strcat(output, "===============================================\n");
+    strcat(output, "        Welcome to the Chat Server!            \n");
+    strcat(output, "===============================================\n");
+    strcat(output, "Use the following commands to interact:\n\n");
+    strcat(output, "LIST USERS           - List all available users.\n");
+    strcat(output, "CONNECT <user_id>    - Connect to a user for chat.\n");
+    strcat(output, "DISCONNECT           - Disconnect from the chat.\n");
+    strcat(output, "MENU                 - Display menu.\n");
+    strcat(output, "===============================================\n");
+
+    char *aditionalData[] = {"E_MTD:SEND"};
+    send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:100", output, aditionalData, 1);
+}
+
 void assign_username(int connfd, int client_index)
 {
 
@@ -102,25 +112,21 @@ void assign_username(int connfd, int client_index)
         send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:100", "Please assign yourself a username (Max 10 chars.)", aditionalData, 1);
 
         int n = read(connfd, buffer, sizeof(buffer) - 1);
-        printf("-----------------\n");
-        printf("BUFFER: %s\n", buffer);
         int resultParse = parse(buffer, &readMsg);
 
-        print_chat_message(&readMsg);
-        printf("-----------------\n");
+        debug_message(buffer, &readMsg);
 
         if (resultParse != -1)
         {
             // If message to long handle error [add]
-            strcpy(username, readMsg.message);
-            username[n - 1] = '\0';
+            strncpy(username, readMsg.message, NAME_LENGTH);
+            username[NAME_LENGTH - 1] = '\0';
 
             pthread_mutex_lock(&clients_mutex); // Lock before modifying
             strncpy(available_clients[client_index].username, username, NAME_LENGTH - 1);
             pthread_mutex_unlock(&clients_mutex); // Unlock after modifying
 
-            char *aditionalData1[] = {"E_MTD:GET"};
-            send_message(connfd, "1.0", CHAT_ACTION_SEND, "CODE:100", printMenu(), aditionalData1, 1);
+            printMenu(connfd);
         }
         else
         {
@@ -130,7 +136,7 @@ void assign_username(int connfd, int client_index)
 
         bzero(buffer, sizeof(buffer));
     }
-}
+} 
 
 void list_users(int connfd)
 {
@@ -202,10 +208,12 @@ void select_user(int connfd, int client_index, int target_client)
     pthread_mutex_unlock(&clients_mutex);
 }
 
-void disconnect_user(int connfd, int client_index)
+void disconnect_user(int connfd, int client_index, void *connfd_ptr)
 {
 
-    printf("Client %d disconnected...\n", connfd);
+    printf("Disconnecting client %d at index %d\n", connfd, client_index);
+    printf("Previous state: sockfd=%d, paired=%d\n", available_clients[client_index].sockfd, available_clients[client_index].paired);
+
 
     if (available_clients[client_index].paired != -1)
     {
@@ -220,11 +228,15 @@ void disconnect_user(int connfd, int client_index)
     available_clients[client_index].sockfd = -1;
     available_clients[client_index].paired = -1;
     available_clients[client_index].is_first_connection = true;
+    memset(available_clients[client_index].username, 0, NAME_LENGTH);
 
     num_clients--;
 
+    printf("Client %d disconnected\n", connfd);
+    printf("New state: sockfd=%d, paired=%d\n", available_clients[client_index].sockfd, available_clients[client_index].paired);
+
     close(connfd);
-    pthread_exit(NULL);
+    pthread_exit(connfd_ptr);
 }
 
 void *client_handler(void *connfd_ptr)
@@ -254,7 +266,7 @@ void *client_handler(void *connfd_ptr)
         int bytes_read = read(connfd, buffer, sizeof(buffer));
         if (bytes_read <= 0)
         {
-            disconnect_user(connfd, client_index);
+            disconnect_user(connfd, client_index, connfd_ptr);
         }
 
         if (buffer[0] != '\0')
@@ -265,9 +277,18 @@ void *client_handler(void *connfd_ptr)
 
             if (parseResult != -1)
             {
-                if (strncasecmp(readMsg.action, CHAT_ACTION_GET, 4) == 0)
+                if (strncasecmp(readMsg.action, CHAT_ACTION_GET, 4) == 0 )
                 {
-                    list_users(connfd);
+                    if (strncasecmp(readMsg.message, "LIST", 4) == 0)
+                    {
+                        list_users(connfd);
+                    }
+                    if (strncasecmp(readMsg.message, "MENU", 4) == 0)
+                    {
+                        printf("Menu requested\n");
+                        printMenu(connfd);
+                        printf("Menu sent\n");
+                    }
                 }
                 else if (strncasecmp(readMsg.message, CHAT_MSG_CONNECT, 7) == 0)
                 {
@@ -285,7 +306,7 @@ void *client_handler(void *connfd_ptr)
                 }
                 else if (strncasecmp(readMsg.action, CHAT_ACTION_LEAVE, 4) == 0 || strncasecmp(readMsg.message, CHAT_MSG_DISCONNECT, 10) == 0)
                 {
-                    disconnect_user(connfd, client_index);
+                    disconnect_user(connfd, client_index, connfd_ptr);
                 }
                 else if (available_clients[client_index].paired != -1)
                 {
@@ -374,13 +395,16 @@ int main()
             //Save new client
             for (int i = 0; i < MAX_CLIENTS; i++)
             {
+                printf("Checking availability for socket %d\n", i);
                 if (available_clients[i].sockfd == -1)
                 {
+                    printf("Socket %d free\n", i);
                     available_clients[i].sockfd = connfd;
                     num_clients++;
                     client_sucessfully_added = true;
                     break;
                 }
+                printf("Socket %d occupied by %s\n", i, available_clients[i].username);
             }
 
             if (!client_sucessfully_added)
