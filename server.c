@@ -29,26 +29,7 @@ struct chat_message sendMsg;
 struct stringify_result result;
 char buffer[CHAT_MSG_MAXSIZE];
 
-/* ASSOCIATED MUTEX FUNCTIONS
- *
- * pthread_mutex_lock - Lock the mutex to ensure exclusive access
- * pthread_mutex_unlock - Unlock the mutex to allow access to others
- */
 pthread_mutex_t clients_mutex; // Mutex for protecting shared state
-
-/**
- * @brief Sends a message to a specified client, including pre-join text.
- *
- * @param pre_join_text The initial text to prepend to the message.
- * @param message The actual message to send.
- * @param dest_sockfd The socket file descriptor of the destination client.
- */
-
-/**
- * @brief Initializes the available clients array, setting all socket
- * descriptors to -1 and clearing usernames.
- */
-
 
 void initialize_clients()
 {
