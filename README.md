@@ -94,6 +94,11 @@ The communication process between clients is managed through a syntactical frame
 
 An essential intermediary step occurs on the server, where it reads the incoming request to identify and verify the intended recipient of the message. The server's `client_handler` method plays a crucial role in this communication process. It assesses the input packet and determines the appropriate response or action to take based on the content and context of the message. This method ensures that the server effectively manages the flow of information between clients, maintaining the integrity and reliability of the communication channel.
 
+
+### UML
+
+<img src="wiki/uml.png" alt="UML Diagram" height="500"/>
+
 ### Protocol Syntax
 
 Our message is build with the following structure:
