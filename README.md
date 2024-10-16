@@ -122,7 +122,7 @@ Our message is build with the following structure:
 | `<protocol>`     | The full message format, composed of MCP, version, method, status code, additional data, and message. |
 | `<MCP>`          | Constant string "MCP".                                                     |
 | `<VERSION>`      | Version number, specified as `<version_number>`.                           |
-| `<METHOD>`       | Defines the action: `GET`, `JOIN`, `SEND`, or `LEAVE`.                     |
+| `<METHOD>`       | Defines the action: `GET`, `JOIN`, `SEND`, `LEAVE` or `...`(Safe intended).                     |
 | `<STATUS_CODE>`  | Status code ranging from `0` to `404`.                                     |
 | `<ADDITIONAL_DATA>` | Key-value pairs or up to 10 additional data elements. Example: `key: value`. Each one separated by backslash. Possible values:|
 ||E_MTD:`<METHOD>`<br>|
