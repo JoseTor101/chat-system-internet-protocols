@@ -16,6 +16,8 @@
 - [References](#References)
 
 ---
+# Explanatory video
+![Video](https://eafit-my.sharepoint.com/personal/jatordeciz_eafit_edu_co/_layouts/15/stream.aspx?id=%2Fpersonal%2Fjatordeciz%5Feafit%5Fedu%5Fco%2FDocuments%2FGrabaciones%2FSustentacio%20P1%2DTelematica%2D20241015%5F210116%2DMeeting%20Recording%2Emp4&referrer=StreamWebApp%2EWeb&referrerScenario=AddressBarCopied%2Eview%2E2f4ea2f8%2D7745%2D4857%2D9ad0%2De76b360e0542&ga=1)
 
 # Introduction
 
